@@ -1,0 +1,15 @@
+ML Project - Value estimation
+Michael - 4/19/21
+
+To select an optimal policy, we need to estimate the value of a variety of policies.  To estimate their value, we have to rely on data collected by the “logging policy.” Here, the logging policy is what the actual CS teams picked and vetoed.
+
+In general, we will probably want to use a variety of value estimators and look for consensus.
+
+Comments
+1: If we assume that teams are choosing “relatively well” then perhaps the covariate shift won’t be that bad, and direct methods will work reasonably well.
+
+1a: Modeling the rhat(X,A) here is basically trying to predict if the team will win given a map and the context.
+
+2: To perform importance weighting, we will need to estimate the logging policy distribution for a given context.  We could try to do this empirically, but it may not work well if the context is high-dimensional (which it probably is).
+
+2a: We should study the logging policy, and perhaps we can model it in a simpler way. Maybe teams repeatedly choose the same maps, so a logging policy could ignore a lot of the context.
