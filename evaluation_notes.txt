@@ -13,3 +13,10 @@ Comments
 2: To perform importance weighting, we will need to estimate the logging policy distribution for a given context.  We could try to do this empirically, but it may not work well if the context is high-dimensional (which it probably is).
 
 2a: We should study the logging policy, and perhaps we can model it in a simpler way. Maybe teams repeatedly choose the same maps, so a logging policy could ignore a lot of the context.
+
+
+Next Steps
+EDA to do on the logging policy: 
+- How consistent are teams
+- How well do they choose based on their past record? 
+- Does the logging policy change over time?
