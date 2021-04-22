@@ -35,7 +35,7 @@ def get_basic_rewards(map_picks, demos):
 
     #drop extra WinnerId column since we no longer need it
     map_picks.dropna(inplace= True, axis = 0)
-    map_picks.drop(labels = [ 'Created', 'Updated', 'WinnerId'], axis = 1, inplace = True)
+    map_picks.drop(labels = ['WinnerId'], axis = 1, inplace = True)
 
     return map_picks
 
@@ -53,6 +53,8 @@ def create_basic_triples(data_directory, save = False):
                                 'WinnerSecondHalfScore', 'WinnerFirstHalfSide', 'WinnerOTScore', 'LoserId', 'LoserScore',
                                 'LoserFirstHalfScore', 'LoserSecondHalfScore', 'LoserFirstHalfSide', 'LoserOTScore',
                                 'DemoParsed', 'Created', 'Updated'])
+
+    map_picks.drop(labels = ['Created', 'Updated'], axis = 1, inplace = True)
 
     map_encoder = {MapName: index for index, MapName in enumerate(sorted(map_picks.MapName.unique()))}
 
@@ -75,13 +77,12 @@ def create_basic_triples(data_directory, save = False):
     
     if save:
         map_pick_context.to_csv(os.path.join(data_directory, 'basic_triples.csv'))
-        print('Finished Basic Context Engineering')
         return map_pick_context
 
     else:
         return map_pick_context
 
-
+    print('Finished Basic Context Engineering')
 
 
 
