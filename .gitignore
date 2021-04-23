@@ -5,6 +5,7 @@ __pycache__/
 *.csv
 *.sublime-project
 *.sublime-workspace
+*.zip
 
 # C extensions
 *.so
