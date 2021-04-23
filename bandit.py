@@ -24,7 +24,11 @@ class Bandit(object):
                 else 0)
         
     def predict_proba(self, X):
-        return softmax((X @ self.theta).reshape(-1, self.n_arms), axis=1)
+        probabilities = softmax((X @ self.theta).reshape(-1, self.n_arms),
+                                axis=1)
+        possible_maps = probabilities * X
+        possible_maps /= possible_maps.sum()
+        return possible_maps
     
     def predict(self, X, deterministic=True):
         predictions = self.predict_proba(X)
@@ -42,4 +46,5 @@ class Bandit(object):
         self.reward_sum += reward.sum()
         self.iters += len(reward)
         r_t = reward.T - self.current_baseline
-        self.theta += self.step_size * r_t @ self.theta_gradient(X, action)
+        gradient = r_t @ self.theta_gradient(X, action)
+        self.theta[action] += self.step_size * gradient
