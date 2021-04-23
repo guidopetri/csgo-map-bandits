@@ -45,11 +45,10 @@ def create_basic_triples(data_directory, save = False):
 
     demos =  pd.read_csv(os.path.join(data_directory, 'demos.csv'), header = None)
 
-    map_picks.drop(labels = ['Created', 'Updated'], axis = 1, inplace = True)
-
     map_encoder = {MapName: index for index, MapName in enumerate(sorted(map_picks.MapName.unique()))}
 
     map_pick_context = get_available_maps(map_picks)
+    
     map_pick_context = map_pick_context[map_picks.Decision == 'Pick']
 
     map_pick_context.drop(labels = 'Decision', axis = 1, inplace = True)
