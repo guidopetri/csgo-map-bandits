@@ -65,7 +65,7 @@ def create_basic_triples(data_directory, save = False):
           ['DecisionTeamId', 'OtherTeamId','DecisionOrder', 'X_Action','Y_reward']
     
     map_pick_context = map_pick_context[cols]
-    
+    print('Finished Basic Context Engineering')
     if save:
         map_pick_context.to_csv(os.path.join(data_directory, 'basic_triples.csv'))
         return map_pick_context
@@ -73,7 +73,7 @@ def create_basic_triples(data_directory, save = False):
     else:
         return map_pick_context
 
-    print('Finished Basic Context Engineering')
+
 
 
 
