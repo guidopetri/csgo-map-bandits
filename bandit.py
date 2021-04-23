@@ -29,7 +29,7 @@ class Bandit(object):
     def predict(self, X, deterministic=True):
         predictions = self.predict_proba(X)
         if deterministic:
-            return predictions.argmax()
+            return predictions.argmax(axis=1)
         cumsum = predictions.cumsum(axis=1)
         random_val = np.random.random_sample(len(cumsum))
         binarized = (cumsum.T < random_val).astype(int).sum(axis=0)
