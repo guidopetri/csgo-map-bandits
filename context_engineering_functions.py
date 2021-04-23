@@ -41,18 +41,9 @@ def get_basic_rewards(map_picks, demos):
 
 
 def create_basic_triples(data_directory, save = False):
-    map_picks = pd.read_csv(os.path.join(data_directory, 'map_picks.csv'),
-                            header = None, 
-                            names = ['MatchId', 'MapName', 'DecisionOrder', 
-                                    'DecisionTeamId', 'OtherTeamId',
-                                    'Decision','Created', 'Updated'] )
+    map_picks = pd.read_csv(os.path.join(data_directory, 'map_picks.csv'), header = None)
 
-    demos =  pd.read_csv(os.path.join(data_directory, 'demos.csv'),
-                        header = None,
-                        names = ['MatchId', 'MapName', 'WinnerId', 'WinnerScore', 'WinnerFirstHalfScore', 
-                                'WinnerSecondHalfScore', 'WinnerFirstHalfSide', 'WinnerOTScore', 'LoserId', 'LoserScore',
-                                'LoserFirstHalfScore', 'LoserSecondHalfScore', 'LoserFirstHalfSide', 'LoserOTScore',
-                                'DemoParsed', 'Created', 'Updated'])
+    demos =  pd.read_csv(os.path.join(data_directory, 'demos.csv'), header = None)
 
     map_picks.drop(labels = ['Created', 'Updated'], axis = 1, inplace = True)
 
@@ -71,7 +62,7 @@ def create_basic_triples(data_directory, save = False):
 
     cols = ['MatchId'] + \
           [i+'_is_available' for i in map_encoder.keys()] + \
-          ['DecisionTeamId', 'OtherTeamId','DecisionOrder', 'X_Action','Y_reward' ]
+          ['DecisionTeamId', 'OtherTeamId','DecisionOrder', 'X_Action','Y_reward']
     
     map_pick_context = map_pick_context[cols]
     
