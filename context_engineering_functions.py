@@ -39,6 +39,22 @@ def get_basic_rewards(map_picks, demos):
 
     return map_picks
 
+def get_proportion_rewards(map_picks, demos):
+    map_picks =  pd.merge(map_picks,
+                          demos[['MatchId', 'MapName', 'WinnerScore', 'LoserScore']], 
+                          how = 'left', 
+                          left_on = ['MatchId', 'MapName'], 
+                          right_on = ['MatchId', 'MapName'],
+                          suffixes = (None, '_right'))
+    #proportion of matches won
+    map_picks['Y_reward'] = (map_picks.WinnerScore - map_picks.WinnerScore ) / (map_picks.WinnerScore + map_picks.WinnerScore)
+
+    #drop extra WinnerId column since we no longer need it
+    map_picks.dropna(inplace= True, axis = 0)
+    map_picks.drop(labels = ['WinnerId'], axis = 1, inplace = True)
+
+    return map_picks
+
 
 def create_basic_triples(data_directory, save = False):
     map_picks = pd.read_csv(os.path.join(data_directory, 'map_picks.csv'), header = None)
