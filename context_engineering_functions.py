@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 
 def get_available_maps(df):
@@ -25,13 +26,23 @@ def get_available_maps(df):
 
 def get_basic_rewards(map_picks, demos):
     map_picks =  pd.merge(map_picks,
-                          demos[['MatchId', 'MapName', 'WinnerId']], 
+                          demos[['MatchId', 
+                                'MapName', 
+                                'WinnerId',
+                                'WinnerScore',
+                                'LoserId', 
+                                'LoserScore']], 
                           how = 'left', 
                           left_on = ['MatchId', 'MapName'], 
                           right_on = ['MatchId', 'MapName'],
                           suffixes = (None, '_right'))
     #for picks, if winner is same as picker, reward 1
-    map_picks['Y_reward'] = (map_picks.DecisionTeamId == map_picks.WinnerId).astype(int)
+
+    map_picks['MapWinnerId'] = np.where(map_picks.WinnerScore > map_picks.LoserScore, 
+                                    map_picks.WinnerId, 
+                                    map_picks.LoserId)
+
+    map_picks['Y_reward'] = (map_picks.DecisionTeamId == map_picks.MapWinnerId).astype(int)
 
     #drop extra WinnerId column since we no longer need it
     map_picks.dropna(inplace= True, axis = 0)
@@ -47,19 +58,17 @@ def get_proportion_rewards(map_picks, demos):
                           right_on = ['MatchId', 'MapName'],
                           suffixes = (None, '_right'))
     #proportion of matches won
-    map_picks['Y_reward'] = (map_picks.WinnerScore - map_picks.WinnerScore ) / (map_picks.WinnerScore + map_picks.WinnerScore)
+    map_picks['Y_reward'] = (map_picks.WinnerScore - map_picks.LoserScore ) / (map_picks.WinnerScore + map_picks.LoserScore)
 
-    #drop extra WinnerId column since we no longer need it
     map_picks.dropna(inplace= True, axis = 0)
-    map_picks.drop(labels = ['WinnerId'], axis = 1, inplace = True)
 
     return map_picks
 
 
-def create_basic_triples(data_directory, save = False):
-    map_picks = pd.read_csv(os.path.join(data_directory, 'map_picks.csv'), header = None)
+def create_basic_triples(data_directory,reward_function = get_basic_rewards, save = False):
+    map_picks = pd.read_csv(os.path.join(data_directory, 'map_picks.csv'))
 
-    demos =  pd.read_csv(os.path.join(data_directory, 'demos.csv'), header = None)
+    demos =  pd.read_csv(os.path.join(data_directory, 'demos.csv'))
 
     map_encoder = {MapName: index for index, MapName in enumerate(sorted(map_picks.MapName.unique()))}
 
@@ -69,7 +78,7 @@ def create_basic_triples(data_directory, save = False):
 
     map_pick_context.drop(labels = 'Decision', axis = 1, inplace = True)
 
-    map_pick_context = get_basic_rewards(map_pick_context, demos)
+    map_pick_context = reward_function(map_pick_context, demos)
 
     map_pick_context.MapName = map_pick_context.MapName.map(map_encoder)
 

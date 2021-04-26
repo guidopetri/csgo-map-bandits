@@ -4,7 +4,7 @@ import sys
 
 
 def main(datapath):
-    context = create_basic_triples(datapath, save = False)
+    context = cef.create_basic_triples(datapath, save = False)
     print(context.head(20))
 
 
