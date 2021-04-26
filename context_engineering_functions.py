@@ -39,8 +39,8 @@ def get_basic_rewards(map_picks, demos):
     #for picks, if winner is same as picker, reward 1
 
     map_picks['MapWinnerId'] = np.where(map_picks.WinnerScore > map_picks.LoserScore, 
-                                    map_picks.WinnerId, 
-                                    map_picks.LoserId)
+                                      map_picks.WinnerId, 
+                                      map_picks.LoserId)
 
     map_picks['Y_reward'] = (map_picks.DecisionTeamId == map_picks.MapWinnerId).astype(int)
 
@@ -52,13 +52,25 @@ def get_basic_rewards(map_picks, demos):
 
 def get_proportion_rewards(map_picks, demos):
     map_picks =  pd.merge(map_picks,
-                          demos[['MatchId', 'MapName', 'WinnerScore', 'LoserScore']], 
+                          demos[['MatchId', 
+                                'MapName', 
+                                'WinnerId',
+                                'WinnerScore',
+                                'LoserId', 
+                                'LoserScore']], 
                           how = 'left', 
                           left_on = ['MatchId', 'MapName'], 
                           right_on = ['MatchId', 'MapName'],
                           suffixes = (None, '_right'))
+
+    map_picks['MapWinnerId'] = np.where(map_picks.WinnerScore > map_picks.LoserScore, 
+                                      map_picks.WinnerId, 
+                                      map_picks.LoserId)
+
     #proportion of matches won
-    map_picks['Y_reward'] = (map_picks.WinnerScore - map_picks.LoserScore ) / (map_picks.WinnerScore + map_picks.LoserScore)
+    map_picks['Y_reward'] = np.where(map_picks.MapWinnerId == map_picks.DecisionTeamId,
+                                    (map_picks.WinnerScore - map_picks.LoserScore ) / (map_picks.WinnerScore + map_picks.LoserScore),
+                                    (map_picks.LoserScore - map_picks.WinnerScore ) / (map_picks.WinnerScore + map_picks.LoserScore))             
 
     map_picks.dropna(inplace= True, axis = 0)
 
