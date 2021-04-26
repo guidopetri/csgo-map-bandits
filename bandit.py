@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 
 import numpy as np
-import pandas as pd
 from scipy.special import softmax
 
 
@@ -15,8 +14,8 @@ class Bandit(object):
         self.iters = 0
 
         # start at uniform
-        # theta shape: (n_arms,)
-        self.theta = np.zeros((self.n_features + 1,))
+        # theta shape: (n_features,)
+        self.theta = np.zeros((self.n_features,))
 
     @property
     def current_baseline(self):
@@ -34,12 +33,18 @@ class Bandit(object):
                 else 0)
 
     def _phi(self, X, a):
+        """
+        Return parameterization of X and action a.
 
+        input: X, contexts. Shape: (n_contexts, n_features)
+               a, actions. Shape: (n_contexts,)
+
+        output: phi, parameterization. Shape: (n_contexts, n_features)
+        """
         if X.ndim == 1:
             X = X.reshape(1, -1)
 
-        actions = np.ones((X.shape[0], 1)) * a
-        return np.concatenate([X, actions], axis=1)
+        return X * np.eye(self.n_arms)[a]
 
     def prefs(self, X):
         """
@@ -76,7 +81,7 @@ class Bandit(object):
         # re-normalize
         possible_maps /= possible_maps.sum()
         return possible_maps
-    
+
     def predict(self, X, deterministic=True):
         """
         Return prediction of an action for each context in X.
@@ -99,7 +104,7 @@ class Bandit(object):
         random_val = np.random.random_sample(len(cumsum))
         binarized = (cumsum.T < random_val).astype(int).sum(axis=0)
         return binarized
-    
+
     def _gradient(self, X, action):
         """
         Return the gradient of log of pi with respect to contexts X
@@ -108,22 +113,22 @@ class Bandit(object):
         input: X, contexts. Shape: (n_contexts, n_features)
                action, actions actually taken. Shape: (n_contexts,)
 
-        output: grad, gradient of theta. Shape: (n_arms,)
+        output: grad, gradient of theta. Shape: (n_features,)
         """
         # should return \nabla log(pi(A_t|X_t))
 
         # precalc
-        phis = [self._phi(X, i) for i in range(self.n_arms + 1)]
+        phis = [self._phi(X, i) for i in range(self.n_arms)]
         exps = [np.exp(self.theta.T * phis[i])
-                for i in range(self.n_arms + 1)]
+                for i in range(self.n_arms)]
         phi = phis[action]
 
         numerator = sum([phis[i] * exps[i]
-                         for i in range(self.n_arms + 1)])
+                         for i in range(self.n_arms)])
         denominator = sum(exps).sum()  # is an array
-        
+
         return phi - numerator / denominator
-    
+
     def update_theta(self, X, action, reward):
         """
         Update theta according to the context/action/reward triplets given.
