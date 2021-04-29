@@ -14,8 +14,8 @@ class Bandit(object):
         self.iters = 0
 
         # start at uniform
-        # theta shape: (n_features,)
-        self.theta = np.zeros((self.n_features,))
+        # theta shape: (n_features * n_arms,)
+        self.theta = np.zeros((self.n_features * self.n_arms,))
 
     @property
     def current_baseline(self):
@@ -36,15 +36,18 @@ class Bandit(object):
         """
         Return parameterization of X and action a.
 
-        input: X, contexts. Shape: (n_contexts, n_features)
-               a, actions. Shape: (n_contexts,)
+        input: X, contexts. Shape: (1, n_features)
+               a, actions. Shape: (1,)
 
-        output: phi, parameterization. Shape: (n_contexts, n_features)
+        output: phi, parameterization. Shape: (n_features * n_arms)
         """
         if X.ndim == 1:
             X = X.reshape(1, -1)
 
-        return X * np.eye(self.n_arms)[a]
+        phi = np.zeros((self.n_arms, self.n_features))
+        phi[a] = X
+
+        return phi.reshape(-1, 1)
 
     def prefs(self, X):
         """
@@ -55,11 +58,14 @@ class Bandit(object):
         output: prefs, preferences. Shape: (n_contexts, n_arms)
         """
 
-        phis = np.stack([self._phi(X, a)
-                         for a in range(self.n_arms)],
-                        axis=1).squeeze().T
+        # phis = np.stack([self._phi(X, a)
+        #                  for a in range(self.n_arms)],
+        #                 axis=1).squeeze().T
 
-        return self.theta.T @ phis
+        prefs = np.array([self.theta.T @ self._phi(X, a)
+                          for a in range(self.n_arms)]).T
+
+        return prefs
 
     def predict_proba(self, X):
         """
@@ -119,7 +125,7 @@ class Bandit(object):
 
         # precalc
         phis = [self._phi(X, i) for i in range(self.n_arms)]
-        exps = [np.exp(self.theta.T * phis[i])
+        exps = [np.exp(self.theta.T @ phis[i])
                 for i in range(self.n_arms)]
         phi = phis[action]
 
@@ -140,7 +146,7 @@ class Bandit(object):
         output: None
         """
         self.reward_sum += reward.sum()
-        self.iters += len(reward)
+        self.iters += len(X)
         r_t = reward.T - self.current_baseline
-        gradient = r_t @ self._gradient(X, action)
+        gradient = r_t * self._gradient(X, action)
         self.theta += self.step_size * gradient.squeeze()
