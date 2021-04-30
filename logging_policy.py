@@ -16,7 +16,7 @@ class LoggingPolicy(object):
 	Use:
 	- get_pa_x(context) returns p(a|x) accounting for unavailable maps. Should be used for Importance Weighting.
     '''
-    def __init__(self,full_context,full_action):
+    def __init__(self, full_context, full_action):
         self.full_context = full_context
         self.full_action = full_action
         self.pa_x_dict = self.calculate_p_action_conditional()
@@ -37,16 +37,19 @@ class LoggingPolicy(object):
             pa_x_dict[team] = pa_x
         return pa_x_dict
     
-    def get_pa_x(self,context):
+    def predict_proba(self, X, is_veto=False):
         '''Function returns the p(a|x) where x is the DecisionTeamId, re-weighted to account for 
            unavailable maps.'''
         # Confirm that map_availability covers all maps
-        assert pd.Series([m in context.index for m in self.map_cols]).all()
+        assert pd.Series([m in X.index for m in self.map_cols]).all()
 
         # Zero out probability for unavailable maps, normalize the other probabilities
-        pa_x = (self.pa_x_dict[context['DecisionTeamId']]).copy()
+        pa_x = (self.pa_x_dict[X['DecisionTeamId']]).copy()
         for i,m in enumerate(self.map_cols):
-            if context[m] == 0:
+            if X[m] == 0:
                 pa_x[i] = 0
         pa_x = pa_x / np.sum(pa_x)
-        return pa_x
+        if is_veto:
+            pass
+        else:
+            return pa_x
