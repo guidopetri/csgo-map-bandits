@@ -33,7 +33,7 @@ class LoggingPolicy(object):
             a_x = []
             for action in self.full_action.unique():
                 a_x.append(max(1,(self.full_action[self.full_context['DecisionTeamId']==team]==action).sum()))
-                pa_x = [ax/np.sum(a_x) for ax in a_x]
+            pa_x = [ax/np.sum(a_x) for ax in a_x]
             pa_x_dict[team] = pa_x
         return pa_x_dict
     
@@ -48,5 +48,5 @@ class LoggingPolicy(object):
         for i,m in enumerate(self.map_cols):
             if context[m] == 0:
                 pa_x[i] = 0
-                pa_x = pa_x / np.sum(pa_x)
+        pa_x = pa_x / np.sum(pa_x)
         return pa_x
