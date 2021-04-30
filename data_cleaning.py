@@ -162,10 +162,19 @@ demos = remove_records(demos,['MapName'],weird_maps)
 map_picks = remove_records(map_picks,['MapName'],weird_maps)
 player_demos = remove_records(player_demos,['MapName'],weird_maps)
 
-### Remove matches where Decision 1 was a Pick
-# This happens ~3 times
-
-wrong_decision_match_ids = list(map_picks[(map_picks['Decision']=='Pick') & (map_picks['DecisionOrder']==1)]['MatchId'])
+### Remove matches where DecisionOrder and Decision don't align
+# DecisionOrder 1,2,5,6 should be 'Remove' and DecisionOrder 3,4,7 should be 'Pick'
+# Picks in 1,2,5,6
+wrong_decision_match_ids = list(map_picks[(map_picks['Decision']=='Pick') & ((map_picks['DecisionOrder'] == 1)|
+                                                                             (map_picks['DecisionOrder'] == 2)|
+                                                                             (map_picks['DecisionOrder'] == 5)|
+                                                                             (map_picks['DecisionOrder'] == 6)
+                                                                            )]['MatchId'])
+# Removes in 3,4,7
+wrong_decision_match_ids.extend(list(map_picks[(map_picks['Decision']=='Remove') & ((map_picks['DecisionOrder'] == 3)|
+                                                                                    (map_picks['DecisionOrder'] == 4)|
+                                                                                    (map_picks['DecisionOrder'] == 7)
+                                                                                   )]['MatchId']))
 
 demos = remove_records(demos,['MatchId'],wrong_decision_match_ids)
 player_demos = remove_records(player_demos,['MatchId'],wrong_decision_match_ids)
