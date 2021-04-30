@@ -21,7 +21,15 @@ full_action = map_pick_context['X_Action']
 lp = LoggingPolicy(map_pick_context,map_pick_context['X_Action'])
 context = full_context.loc[100]
 full_pa_x = lp.pa_x_dict[context['DecisionTeamId']]
-print("get_pa_x: ",lp.get_pa_x(context)[0])
-print("manual calculation: ",full_pa_x[0]/(1-full_pa_x[2]-full_pa_x[3]-full_pa_x[6]))
-if lp.get_pa_x(context)[0] == full_pa_x[0]/(1-full_pa_x[2]-full_pa_x[3]-full_pa_x[6]):
+
+# Calculate probability distributions
+from_lp = lp.predict_proba(context)[0]
+manual = full_pa_x[0]/(1-full_pa_x[4]-full_pa_x[4])
+
+print("predict_proba: ",from_lp)
+print("manual calculation: ",manual)
+
+if lp.predict_proba(context)[0] == manual:
     print("Good")
+else:
+	print("Test Failed")
