@@ -150,3 +150,23 @@ class Bandit(object):
         r_t = reward.T - self.current_baseline
         gradient = r_t * self._gradient(X, action)
         self.theta += self.step_size * gradient.squeeze()
+
+
+class VetoBandit(Bandit):
+    def update_theta(self, X, action, reward):
+        """
+        Update theta according to the context/action/reward triplets given.
+
+        input: X, contexts. Shape: (n_contexts, n_features)
+               action, actions actually taken. Shape: (n_contexts,)
+               reward, rewards received for the actions. Shape: (n_contexts,)
+
+        output: None
+        """
+        self.reward_sum += reward.sum()
+        self.iters += len(X)
+        r_t = reward.T - self.current_baseline
+        gradient = np.zeros(self.theta.shape)
+        for idx, x in enumerate(X):
+            gradient += r_t[idx] * self._gradient(x, action[idx]).squeeze()
+        self.theta += self.step_size * gradient.squeeze()
