@@ -76,6 +76,25 @@ def get_proportion_rewards(map_picks, demos):
 
     return map_picks
 
+def get_veto_rewards(map_picks, demos):
+      map_picks_vetos = map_picks[map_picks.Decision == 'Remove'].sort_values(by = ['MatchId', 'DecisionOrder'])
+      match_winners = demos[['MatchId', 'WinnerId']].drop_duplicates()
+
+      map_picks_vetos =  pd.merge(map_picks_vetos,
+                          match_winners, 
+                          how = 'left', 
+                          left_on = 'MatchId', 
+                          right_on = 'MatchId',
+                          suffixes = (None, '_right'))
+
+      map_picks_vetos['number_to_exp'] = map_picks_vetos.DecisionOrder.replace(to_replace = {5:3, 6:4})
+
+      map_picks_vetos['Y_reward'] = np.where(map_picks_vetos.WinnerId ==map_picks_vetos.DecisionTeamId, 
+                                    1 , -1)/2**(map_picks_vetos.number_to_exp)
+
+      map_picks_vetos.drop(labels = ['number_to_exp'], axis = 1, inplace = True)
+
+      return map_picks_vetos
 
 def create_basic_triples(data_directory,reward_function = get_basic_rewards, save = False):
     map_picks = pd.read_csv(os.path.join(data_directory, 'map_picks.csv'))
@@ -86,11 +105,9 @@ def create_basic_triples(data_directory,reward_function = get_basic_rewards, sav
 
     map_pick_context = get_available_maps(map_picks)
     
-    map_pick_context = map_pick_context[map_picks.Decision == 'Pick']
+    map_pick_context = reward_function(map_pick_context, demos)
 
     map_pick_context.drop(labels = 'Decision', axis = 1, inplace = True)
-
-    map_pick_context = reward_function(map_pick_context, demos)
 
     map_pick_context.MapName = map_pick_context.MapName.map(map_encoder)
 
@@ -109,7 +126,43 @@ def create_basic_triples(data_directory,reward_function = get_basic_rewards, sav
     else:
         return map_pick_context
 
+def create_basic_pick_veto_triples(data_directory,
+                                  pick_reward_function = get_basic_rewards, 
+                                  veto_reward_function = get_veto_rewards, 
+                                  concat = False,
+                                  save = False):
+    
+    map_picks = pd.read_csv(os.path.join(data_directory, 'map_picks.csv'))
+
+    demos =  pd.read_csv(os.path.join(data_directory, 'demos.csv'))
+
+    map_encoder = {MapName: index for index, MapName in enumerate(sorted(map_picks.MapName.unique()))}
+
+    map_pick_context = get_available_maps(map_picks)
+
+    rewards_list  = [pick_reward_function(map_pick_context, demos), veto_reward_function(map_pick_context, demos)]
+
+    cols = ['MatchId'] + \
+          [i+'_is_available' for i in map_encoder.keys()] + \
+          ['DecisionTeamId', 'OtherTeamId','DecisionOrder', 'MapName','Y_reward']
+
+    for i in range(len(rewards_list)):
+        rewards_list[i].drop(labels = 'Decision', axis = 1, inplace = True)
+        rewards_list[i] = rewards_list[i][cols]
+        rewards_list[i].rename(columns = {'MapName': 'X_Action'}, inplace = True)
+        rewards_list[i].X_Action = rewards_list[i].X_Action.map(map_encoder)
+
+    if concat:
+        
+        map_pick_context = pd.concat(rewards_list, axis = 0)
+        if save:
+            map_pick_context.to_csv(os.path.join(data_directory, 'pick_veto_reward_triples.csv'))
+        
+        return map_pick_context
 
 
+
+    else:
+        return tuple(rewards_list)
 
 

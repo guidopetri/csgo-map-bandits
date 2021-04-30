@@ -4,8 +4,9 @@ import sys
 
 
 def main(datapath):
-    context = cef.create_basic_triples(datapath, reward_function = cef.get_proportion_rewards,save = False)
-    print(context.head(20))
+    context = cef.create_basic_pick_veto_triples(datapath, concat = False, save = False)
+    print(context[0].head(20))
+    print(context[1].head(20))
 
 
 if __name__ == "__main__":
