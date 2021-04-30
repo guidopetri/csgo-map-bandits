@@ -154,7 +154,7 @@ def create_basic_pick_veto_triples(data_directory,
 
     if concat:
         
-        map_pick_context = pd.concat(rewards_list, axis = 0)
+        map_pick_context = pd.concat(rewards_list, axis = 0).sort_values(by = ['MatchId', 'DecisionOrder'])
         if save:
             map_pick_context.to_csv(os.path.join(data_directory, 'pick_veto_reward_triples.csv'))
         
