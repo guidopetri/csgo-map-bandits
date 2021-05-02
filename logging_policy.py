@@ -35,6 +35,14 @@ class LoggingPolicy(object):
                 a_x.append(max(1,(self.full_action[self.full_context['DecisionTeamId']==team]==action).sum()))
             pa_x = [ax/np.sum(a_x) for ax in a_x]
             pa_x_dict[team] = pa_x
+
+        # Calculate default distribution - mean of all selections
+        a_x = []
+        for action in self.full_action.unique():
+            a_x.append(max(1,(self.full_action==action).sum()))
+        pa_x = [ax/np.sum(a_x) for ax in a_x]
+        pa_x_dict['default'] = pa_x
+
         return pa_x_dict
     
     def predict_proba(self, X, is_veto=False):
@@ -44,7 +52,12 @@ class LoggingPolicy(object):
         assert pd.Series([m in X.index for m in self.map_cols]).all()
 
         # Zero out probability for unavailable maps, normalize the other probabilities
-        pa_x = (self.pa_x_dict[X['DecisionTeamId']]).copy()
+        
+        try:
+            pa_x = (self.pa_x_dict[X['DecisionTeamId']]).copy()
+        except KeyError:
+            print("Team ID {} not seen during training. Using default policy.".format(X['DecisionTeamId']))
+            pa_x = self.pa_x_dict['default'].copy()
         for i,m in enumerate(self.map_cols):
             if X[m] == 0:
                 pa_x[i] = 0
@@ -53,3 +66,9 @@ class LoggingPolicy(object):
             pass
         else:
             return pa_x
+
+
+
+
+
+
