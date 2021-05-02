@@ -20,7 +20,7 @@ def get_available_maps(df):
                                .shift(1, fill_value = 0)# shift down so we know what's available
                                ))
     rolling_df.drop('MatchId',axis = 1, inplace = True)
-    
+
     rolling_df = rolling_df.astype(int)
     rolling_df.reset_index(drop = True, inplace=True)
     rolling_df.columns = [x + '_is_available' for x in rolling_df.columns]
@@ -167,6 +167,10 @@ def create_basic_pick_veto_triples(data_directory,
 
 
     else:
+        if save:
+            rewards_list[0].to_csv(os.path.join(data_directory, 'pick_reward_triples.csv'))
+            rewards_list[1].to_csv(os.path.join(data_directory, 'veto_reward_triples.csv'))
+
         return tuple(rewards_list)
 
 
