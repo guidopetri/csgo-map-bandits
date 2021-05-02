@@ -15,8 +15,12 @@ def get_available_maps(df):
     rolling_df = (1 - (manip_df.groupby('MatchId')[map_names]
                                .rolling(7, min_periods=0)
                                .sum()  # rolling sum
-                               .shift(1, fill_value=0)  # shift down so we know what's available
+                               .reset_index(level = 0)
+                               .groupby('MatchId')
+                               .shift(1, fill_value = 0)# shift down so we know what's available
                                ))
+    rolling_df.drop('MatchId',axis = 1, inplace = True)
+    
     rolling_df = rolling_df.astype(int)
     rolling_df.reset_index(drop = True, inplace=True)
     rolling_df.columns = [x + '_is_available' for x in rolling_df.columns]
