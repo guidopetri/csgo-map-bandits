@@ -186,7 +186,7 @@ class ComboBandit(Bandit):
         # where one set is for picks and another for vetos
         self.theta = np.zeros((2 * self.n_features * self.n_arms,))
 
-    def update_theta(self, X, action, reward):
+    def update_theta(self, X, action, reward, action_type):
         """
         Update theta according to the context/action/reward triplets given.
 
