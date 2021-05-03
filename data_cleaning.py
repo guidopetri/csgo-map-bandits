@@ -228,8 +228,8 @@ player_demos = player_demos.drop(['Created','Updated'],axis=1)
 ### Save clean csv's
 out_dir = '../data/clean/'
 
-if not os.path.exists(data_dir):
-    os.mkdir(data_dir)
+if not os.path.exists(out_dir):
+    os.mkdir(out_dir)
 
 demos.to_csv(out_dir+'demos.csv',index=False)
 map_picks.to_csv(out_dir+'map_picks.csv',index=False)
