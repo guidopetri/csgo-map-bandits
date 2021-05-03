@@ -28,6 +28,57 @@ def get_available_maps(df):
     df = pd.concat([df, rolling_df], axis=1)
     return df
 
+def get_historical_win_pct(map_picks, matches, alpha = 5, beta = 10):
+    matches = matches[['MatchId', 'MatchDate', 'MatchTime', 'WinnerId', 'LoserId']].copy()
+    
+    matches.sort_values(by = ['MatchDate', 'MatchTime'], inplace = True)
+    matches.reset_index(drop = True, inplace = True)
+
+    matches['Team_Win_Count'] = matches.groupby(by = 'WinnerId')[['WinnerId']].cumcount() 
+
+    matches_long = pd.melt(matches, 
+                          id_vars = ['MatchId','MatchDate','MatchTime'], 
+                          value_vars = ['WinnerId','LoserId'], 
+                          var_name = 'isWinner', 
+                          value_name = 'TeamId')
+
+    matches_long.sort_values(by = ['MatchDate','MatchTime'], inplace= True)
+    
+    matches_long['NumGames'] = matches_long.groupby(by = 'TeamId').cumcount() + 1
+    
+    matches_long.isWinner = (matches_long.isWinner == 'WinnerId').astype(int)
+    
+    matches_long['Team_Win_Count'] = matches_long.groupby('TeamId').isWinner.cumsum()
+    
+    matches_long['Team_Win_Rate'] = (matches_long.Team_Win_Count + alpha) / (matches_long.NumGames + beta)
+
+    matches_long.Team_Win_Rate =  matches_long.groupby('TeamId').Team_Win_Rate.shift(1, fill_value = 0.5)
+
+    matches_pivot = pd.pivot(matches_long, 
+                            index = ['MatchId'],
+                            columns = 'isWinner', 
+                            values = ['TeamId','Team_Win_Rate'])
+
+    matches_pivot.columns = ['LoserId', 'WinnerId', 'LoserWinPercentage', 'WinnerWinPercentage']
+
+    map_picks = pd.merge(map_picks, 
+                        matches_pivot, 
+                        how = 'left', 
+                        left_on = ['MatchId'],
+                        right_on = ['MatchId'])
+
+    map_picks['DecisionTeam_WinPercent'] = np.where(map_picks.DecisionTeamId == map_picks.WinnerId, 
+                                                  map_picks.WinnerWinPercentage,
+                                                  map_picks.LoserWinPercentage)
+    
+    map_picks['OtherTeam_WinPercent'] = np.where(map_picks.OtherTeamId == map_picks.WinnerId,
+                                                map_picks.WinnerWinPercentage, 
+                                                map_picks.LoserWinPercentage)
+
+    map_picks.drop(labels = ['LoserId', 'WinnerId', 'LoserWinPercentage', 'WinnerWinPercentage'], axis = 1, inplace = True)
+
+    return map_picks
+
 def get_basic_rewards(map_picks, demos):
     map_picks =  pd.merge(map_picks,
                           demos[['MatchId', 
@@ -140,15 +191,20 @@ def create_basic_pick_veto_triples(data_directory,
 
     demos =  pd.read_csv(os.path.join(data_directory, 'demos.csv'))
 
+    matches = pd.read_csv(os.path.join(data_directory, 'matches.csv'))
+
     map_encoder = {MapName: index for index, MapName in enumerate(sorted(map_picks.MapName.unique()))}
 
     map_pick_context = get_available_maps(map_picks)
+
+    map_pick_context = get_historical_win_pct(map_pick_context, matches)
 
     rewards_list  = [pick_reward_function(map_pick_context, demos), veto_reward_function(map_pick_context, demos)]
 
     cols = ['MatchId'] + \
           [i+'_is_available' for i in map_encoder.keys()] + \
-          ['DecisionTeamId', 'OtherTeamId','DecisionOrder', 'MapName','Y_reward']
+          ['DecisionTeamId', 'OtherTeamId', 'DecisionTeam_WinPercent', \
+          'OtherTeam_WinPercent','DecisionOrder', 'MapName','Y_reward']
 
     for i in range(len(rewards_list)):
         rewards_list[i].drop(labels = 'Decision', axis = 1, inplace = True)
@@ -163,8 +219,6 @@ def create_basic_pick_veto_triples(data_directory,
             map_pick_context.to_csv(os.path.join(data_directory, 'pick_veto_reward_triples.csv'))
         
         return map_pick_context
-
-
 
     else:
         if save:
