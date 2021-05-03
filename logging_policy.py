@@ -16,40 +16,67 @@ class LoggingPolicy(object):
 	Use:
 	- get_pa_x(context) returns p(a|x) accounting for unavailable maps. Should be used for Importance Weighting.
     '''
-    def __init__(self, full_context, full_action):
-        self.full_context = full_context
-        self.full_action = full_action
-        self.pa_x_dict = self.calculate_p_action_conditional()
+    def __init__(self, pick_context, pick_action, veto_context=None, veto_action=None):
+        # self.pick_context = pick_context # Probably don't need to store this
+        # self.pick_action = pick_action # Probably don't need to store this
+        self.pa_x_dict = self.calculate_p_action_conditional(pick_context,pick_action)
+        if veto_context is not None:
+            self.pa_x_veto_dict = self.calculate_p_action_conditional(veto_context,veto_action)
         self.map_cols = ['de_dust2_is_available', 'de_inferno_is_available',
                          'de_mirage_is_available', 'de_nuke_is_available',
                          'de_overpass_is_available', 'de_train_is_available',
                          'de_vertigo_is_available']
     
-    def calculate_p_action_conditional(self):
+    def calculate_p_action_conditional(self,context,action):
         # Calculate p(a|x) where x is the DecisionTeamId.
         # Sets minimum p(a|x) = 1/num_samples
         pa_x_dict = {}
-        for team in self.full_context['DecisionTeamId'].unique():
+        for team in context['DecisionTeamId'].unique():
             a_x = []
-            for action in self.full_action.unique():
-                a_x.append(max(1,(self.full_action[self.full_context['DecisionTeamId']==team]==action).sum()))
+            for act in action.unique():
+                a_x.append(max(1,(action[context['DecisionTeamId']==team]==act).sum()))
             pa_x = [ax/np.sum(a_x) for ax in a_x]
             pa_x_dict[team] = pa_x
+
+        # Calculate default distribution - mean of all selections
+        a_x = []
+        for act in action.unique():
+            a_x.append(max(1,(action==act).sum()))
+        pa_x = [ax/np.sum(a_x) for ax in a_x]
+        pa_x_dict['default'] = pa_x
+
         return pa_x_dict
     
-    def predict_proba(self, X, is_veto=False):
+    def predict_proba(self,X,is_veto=False):
+        # Wrapper for _predict_proba_internal() that passes it either the picks or veto dict
+        if is_veto:
+            return self._predict_proba_internal(X,self.pa_x_veto_dict)
+        else:
+            return self._predict_proba_internal(X,self.pa_x_dict)
+
+
+    def _predict_proba_internal(self, X, pa_x_dict):
         '''Function returns the p(a|x) where x is the DecisionTeamId, re-weighted to account for 
            unavailable maps.'''
         # Confirm that map_availability covers all maps
         assert pd.Series([m in X.index for m in self.map_cols]).all()
 
-        # Zero out probability for unavailable maps, normalize the other probabilities
-        pa_x = (self.pa_x_dict[X['DecisionTeamId']]).copy()
+        # Zero out probability for unavailable maps, normalize the other probabilities        
+        try:
+            pa_x = (pa_x_dict[X['DecisionTeamId']]).copy()
+        except KeyError:
+            print("Team ID {} not seen during training. Using default policy.".format(X['DecisionTeamId']))
+            pa_x = pa_x_dict['default'].copy()
         for i,m in enumerate(self.map_cols):
             if X[m] == 0:
                 pa_x[i] = 0
         pa_x = pa_x / np.sum(pa_x)
-        if is_veto:
-            pass
-        else:
-            return pa_x
+
+        return pa_x
+        
+
+
+
+
+
+
