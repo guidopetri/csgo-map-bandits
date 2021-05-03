@@ -216,3 +216,37 @@ class ComboBandit(Bandit):
 
             gradient += r_t[idx] * self._gradient(x, curr_action).squeeze()
         self.theta += self.step_size * gradient.squeeze()
+
+
+class EpisodicBandit(ComboBandit):
+    def update_theta(self, X, action, reward, action_types):
+        """
+        Update theta according to the context/action/reward triplets given.
+
+        input: X, contexts. Shape: (n_contexts, n_features)
+               action, actions actually taken. Shape: (n_contexts,)
+               reward, rewards received for the actions. Shape: (n_contexts,)
+
+        output: None
+        """
+        self.reward_sum += reward.sum()
+        self.iters += len(X)
+        r_t = reward.T - self.current_baseline
+        gradient = np.zeros(self.theta.shape)
+
+        # enforce episodic learning
+        if X.ndim == 1:
+            raise ValueError("Only episodic learning intended: "
+                             "X must be 2-dimensional")
+
+        for idx, x in enumerate(X):
+            if action_types[idx] == 'pick':
+                curr_action = action[idx]
+            elif action_types[idx] == 'veto':
+                # add 7 to offset the vetos
+                curr_action = action[idx] + self.n_arms
+            else:
+                raise ValueError('Action type must be one of "pick", "veto"')
+
+            gradient += r_t[idx] * self._gradient(x, curr_action).squeeze()
+        self.theta += self.step_size * gradient.squeeze()
