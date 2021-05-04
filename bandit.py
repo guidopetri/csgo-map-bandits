@@ -83,7 +83,7 @@ class Bandit(object):
                                 axis=1)
         # get only possible maps
         # for now the context is just which maps are possible
-        possible_maps = probabilities * X
+        possible_maps = probabilities * X[:self.n_arms]
         # re-normalize
         possible_maps /= possible_maps.sum()
         return possible_maps
