@@ -79,6 +79,75 @@ def get_historical_win_pct(map_picks, matches, alpha = 5, beta = 10):
 
     return map_picks
 
+def get_historical_map_win_pct(map_picks, demos, matches, alpha = 5, beta = 10):
+
+    demos = demos.merge(matches[['MatchId', 'MatchDate', 'MatchTime'] ], on='MatchId')
+    map_picks = map_picks.merge(matches[['MatchId', 'MatchDate', 'MatchTime'] ], on='MatchId')
+
+    demos['MapWinner'] = np.where(demos.WinnerScore > demos.LoserScore, demos.WinnerId, demos.LoserId) # Mark which side won
+
+    long_df = pd.melt(demos,
+                    id_vars=['MatchId','MapName','MapWinner','MatchDate','MatchTime'],
+                    value_vars = ['WinnerId','LoserId'],
+                    var_name='Side',
+                    value_name='TeamId').sort_values(by=['MatchDate', 'MatchTime'])
+
+    long_df['MapResult'] = (long_df.MapWinner == long_df.TeamId).astype(int)
+
+    long_df['MatchesOnMap'] = long_df.groupby(['MapName','TeamId'])['MapResult'].cumcount() + 1
+    long_df['WinsOnMap'] = long_df.groupby(['MapName','TeamId'])['MapResult'].cumsum()
+
+    # Add Laplace Smoothing
+    long_df.WinsOnMap += alpha
+    long_df.MatchesOnMap += beta
+    long_df['WinRateOnMap'] = long_df.WinsOnMap/long_df.MatchesOnMap
+  
+    long_df['PrevWinRateOnMap'] = long_df.groupby(['MapName','TeamId']).WinRateOnMap.shift(1, fill_value = alpha/beta)
+
+    pivot_df = pd.pivot(long_df, 
+                       index = ['MatchId', 'MapName'],
+                       columns = 'Side', 
+                       values = ['TeamId','PrevWinRateOnMap'])
+
+    pivot_df.columns = ['LoserId', 'WinnerId', 'LoserMap_HistWinPct', 'WinnerMap_HistWinPct']
+
+    pivot_df.reset_index(inplace = True)
+
+    map_picks = pd.merge(map_picks, 
+                        pivot_df, 
+                        how = 'left', 
+                        left_on = ['MatchId', 'MapName'],
+                        right_on = ['MatchId', 'MapName'])
+
+    map_picks.sort_values(by = ['MatchDate', 'MatchTime'], inplace = True)
+
+    map_picks.LoserId = map_picks.groupby('MatchId').LoserId.ffill().bfill()
+    map_picks.WinnerId = map_picks.groupby('MatchId').WinnerId.ffill().bfill()
+
+    #first forward fill Historical Map Win Percents, and then backfill all initials to alpha/beta
+    map_picks.WinnerMap_HistWinPct = map_picks.groupby(by = ['WinnerId', 'MapName']).WinnerMap_HistWinPct.fillna(method = 'ffill')
+    map_picks.WinnerMap_HistWinPct = map_picks.groupby(by = ['WinnerId', 'MapName']).WinnerMap_HistWinPct.fillna(value = alpha/beta)
+
+    map_picks.LoserMap_HistWinPct = map_picks.groupby(by = ['LoserId', 'MapName']).LoserMap_HistWinPct.fillna(method = 'ffill')
+    map_picks.LoserMap_HistWinPct = map_picks.groupby(by = ['LoserId', 'MapName']).LoserMap_HistWinPct.fillna(value = alpha/beta)
+
+
+    map_picks['DecisionTeam_HistMapWinPercent'] = np.where(map_picks.DecisionTeamId == map_picks.WinnerId, 
+                                                  map_picks.WinnerMap_HistWinPct,
+                                                  map_picks.LoserMap_HistWinPct)
+    
+    map_picks['OtherTeam_HistMapWinPercent'] = np.where(map_picks.OtherTeamId == map_picks.WinnerId,
+                                                map_picks.WinnerMap_HistWinPct, 
+                                                map_picks.LoserMap_HistWinPct)
+
+    map_picks.drop(labels = ['LoserId', 'WinnerId', 
+                            'MatchDate', 'MatchTime',
+                            'WinnerMap_HistWinPct', 'LoserMap_HistWinPct'], axis = 1, inplace = True)
+
+    map_picks.sort_values(by = ['MatchId', 'DecisionOrder'], inplace = True)
+
+    return map_picks
+
 def get_basic_rewards(map_picks, demos):
     map_picks =  pd.merge(map_picks,
                           demos[['MatchId', 
@@ -198,13 +267,15 @@ def create_basic_pick_veto_triples(data_directory,
     map_pick_context = get_available_maps(map_picks)
 
     map_pick_context = get_historical_win_pct(map_pick_context, matches)
+    map_pick_context = get_historical_map_win_pct(map_pick_context, demos, matches)
 
     rewards_list  = [pick_reward_function(map_pick_context, demos), veto_reward_function(map_pick_context, demos)]
 
     cols = ['MatchId'] + \
           [i+'_is_available' for i in map_encoder.keys()] + \
           ['DecisionTeamId', 'OtherTeamId', 'DecisionTeam_WinPercent', \
-          'OtherTeam_WinPercent','DecisionOrder', 'MapName','Y_reward']
+          'OtherTeam_WinPercent','DecisionTeam_HistMapWinPercent','OtherTeam_HistMapWinPercent',\
+          'DecisionOrder', 'MapName','Y_reward']
 
     for i in range(len(rewards_list)):
         rewards_list[i].drop(labels = 'Decision', axis = 1, inplace = True)
