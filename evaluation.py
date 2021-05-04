@@ -4,7 +4,7 @@ from bandit import Bandit
 from logging_policy import LoggingPolicy
 from sklearn.linear_model import RidgeCV
 
-def train_value_estimator(context_train,map_picks_train,actions_train,rewards_train,log_policy,target_bandit):
+def train_value_estimator(context_train,map_picks_train,actions_train,rewards_train,log_policy,target_bandit,veto_flags=None):
     '''
     Trains an importance weighted RidgeCV model which is used for direct method estimation.
     
@@ -22,9 +22,15 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
     all_actions = np.unique(actions_train) # return from unique is already sorted
     action_to_model_dict = {}
     log_propensities = np.empty((context_train.shape[0],len(log_policy.map_cols)))
+
+    # Veto flags
+    if veto_flags is not None:
+        veto_flags = (veto_flags == 'veto')
+    else:
+        veto_flags = pd.Series([False]*context_train.shape[0])
     
     for ii,(idx,row) in enumerate(map_picks_train.iterrows()):   
-        log_propensities_row = log_policy.predict_proba(row)
+        log_propensities_row = log_policy.predict_proba(row,veto_flags.iloc[ii])
         log_propensities[ii,:] = log_propensities_row
     
     target_propensities = np.empty((context_train.shape[0],len(log_policy.map_cols)))
@@ -51,18 +57,24 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
     # Models are fit
     return action_to_model_dict
 
-def evaluate(context_test,map_picks_test,actions_test,rewards_test,log_policy,target_bandit,action_to_model_dict):
+def evaluate(context_test,map_picks_test,actions_test,rewards_test,log_policy,target_bandit,action_to_model_dict,veto_flags=None):
     est = {}
     est["mean"] = np.mean(rewards_test)
     
     all_actions = action_to_model_dict.keys()
     num_actions = target_bandit.n_arms
     assert target_bandit.n_arms == len(log_policy.pa_x_dict[6])
+
+    # Veto flags
+    if veto_flags is not None:
+        veto_flags = (veto_flags == 'veto')
+    else:
+        veto_flags = pd.Series([False]*context_test.shape[0])
     
     #Create Logging policies propensity distribution
     log_propensities = np.empty((context_test.shape[0],len(log_policy.map_cols)))
     for ii,(idx,row) in enumerate(map_picks_test.iterrows()):  
-        log_propensities_row = log_policy.predict_proba(row)
+        log_propensities_row = log_policy.predict_proba(row,veto_flags.iloc[ii])
         log_propensities[ii,:] = log_propensities_row
     
     #Create target policies propensity distribution
