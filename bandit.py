@@ -150,3 +150,103 @@ class Bandit(object):
         r_t = reward.T - self.current_baseline
         gradient = r_t * self._gradient(X, action)
         self.theta += self.step_size * gradient.squeeze()
+
+
+class VetoBandit(Bandit):
+    def update_theta(self, X, action, reward):
+        """
+        Update theta according to the context/action/reward triplets given.
+
+        input: X, contexts. Shape: (n_contexts, n_features)
+               action, actions actually taken. Shape: (n_contexts,)
+               reward, rewards received for the actions. Shape: (n_contexts,)
+
+        output: None
+        """
+        self.reward_sum += reward.sum()
+        self.iters += len(X)
+        r_t = reward.T - self.current_baseline
+        gradient = np.zeros(self.theta.shape)
+        for idx, x in enumerate(X):
+            gradient += r_t[idx] * self._gradient(x, action[idx]).squeeze()
+        self.theta += self.step_size * gradient.squeeze()
+
+
+class ComboBandit(Bandit):
+    def __init__(self, n_features, n_arms, step_size=0.05, baseline=False):
+        self.n_features = n_features
+        self.n_arms = n_arms
+        self.step_size = step_size
+        self.baseline = baseline
+        self.reward_sum = 0
+        self.iters = 0
+
+        # start at uniform
+        # theta shape: (2 * n_features * n_arms,)
+        # where one set is for picks and another for vetos
+        self.theta = np.zeros((2 * self.n_features * self.n_arms,))
+
+    def update_theta(self, X, action, reward, action_type):
+        """
+        Update theta according to the context/action/reward triplets given.
+
+        input: X, contexts. Shape: (n_contexts, n_features)
+               action, actions actually taken. Shape: (n_contexts,)
+               reward, rewards received for the actions. Shape: (n_contexts,)
+
+        output: None
+        """
+        self.reward_sum += reward.sum()
+        self.iters += len(X)
+        r_t = reward.T - self.current_baseline
+        gradient = np.zeros(self.theta.shape)
+
+        # allow both episodic and online learning
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+
+        for idx, x in enumerate(X):
+            if action_type == 'pick':
+                curr_action = action[idx]
+            elif action_type == 'veto':
+                # add 7 to offset the vetos
+                curr_action = action[idx] + self.n_arms
+            else:
+                raise ValueError('Action type must be one of "pick", "veto"')
+
+            gradient += r_t[idx] * self._gradient(x, curr_action).squeeze()
+        self.theta += self.step_size * gradient.squeeze()
+
+
+class EpisodicBandit(ComboBandit):
+    def update_theta(self, X, action, reward, action_types):
+        """
+        Update theta according to the context/action/reward triplets given.
+
+        input: X, contexts. Shape: (n_contexts, n_features)
+               action, actions actually taken. Shape: (n_contexts,)
+               reward, rewards received for the actions. Shape: (n_contexts,)
+
+        output: None
+        """
+        self.reward_sum += reward.sum()
+        self.iters += len(X)
+        r_t = reward.T - self.current_baseline
+        gradient = np.zeros(self.theta.shape)
+
+        # enforce episodic learning
+        if X.ndim == 1:
+            raise ValueError("Only episodic learning intended: "
+                             "X must be 2-dimensional")
+
+        for idx, x in enumerate(X):
+            if action_types[idx] == 'pick':
+                curr_action = action[idx]
+            elif action_types[idx] == 'veto':
+                # add 7 to offset the vetos
+                curr_action = action[idx] + self.n_arms
+            else:
+                raise ValueError('Action type must be one of "pick", "veto"')
+
+            gradient += r_t[idx] * self._gradient(x, curr_action).squeeze()
+        self.theta += self.step_size * gradient.squeeze()
