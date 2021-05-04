@@ -1,0 +1,33 @@
+Lit Review
+
+CSGO
+Peter's paper
+Peter's references
+
+E-sports
+Focus on win probability and player evaluation
+Win probability:
+
+Player evaluation:
+
+Bandits:
+
+
+Policy gradient:
+
+
+
+Studying multi-stage actions
+
+
+
+
+Studying vetoes in bandits or RL
+
+Bandit - Honestly, nothing.
+
+RL - These papers refer to external vetoes that restrict the action space, but do not consider vetoes as a chosen action.
+
+https://www.sciencedirect.com/science/article/pii/S0921889012001248?casa_token=1iG9JjGuzo4AAAAA:DFzmZ61tPBnKuvPtuRhEUwDESRBeYVuA2L_t8huCcSMl40K0JrhenHAbrhWubf6PWKRdPNP5
+
+https://www.sciencedirect.com/science/article/pii/S002002551500273X?casa_token=U06_zSjtV70AAAAA:zVHo9gEKoT-kNHUxXj5TGonEWFAipWUNNcI8nwGpDZOOM91eFXg9FamEajnHoyKeq_2JpIh-
