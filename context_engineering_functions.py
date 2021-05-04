@@ -155,6 +155,7 @@ def get_historical_map_win_pct(map_picks, demos, matches, alpha = 5, beta = 10):
     pivot_table2.reset_index(inplace = True)
 
     map_picks = map_picks.merge(pivot_table2, how = 'left', left_on = 'MatchId', right_on = 'MatchId')
+    map_picks.sort_values(by = ['MatchId', 'DecisionOrder'], inplace = True)
 
     return map_picks
 
