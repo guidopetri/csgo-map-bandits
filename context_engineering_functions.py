@@ -83,6 +83,7 @@ def get_historical_map_win_pct(map_picks, demos, matches, alpha = 5, beta = 10):
 
     demos = demos.merge(matches[['MatchId', 'MatchDate', 'MatchTime'] ], on='MatchId')
     map_picks = map_picks.merge(matches[['MatchId', 'MatchDate', 'MatchTime'] ], on='MatchId')
+    map_names = sorted(map_picks.MapName.unique())
 
     demos['MapWinner'] = np.where(demos.WinnerScore > demos.LoserScore, demos.WinnerId, demos.LoserId) # Mark which side won
 
@@ -140,10 +141,20 @@ def get_historical_map_win_pct(map_picks, demos, matches, alpha = 5, beta = 10):
                                                 map_picks.WinnerMap_HistWinPct, 
                                                 map_picks.LoserMap_HistWinPct)
 
+    pivot_table2 = pd.pivot(map_picks,
+                          index = ['MatchId'],
+                          columns = 'MapName', 
+                          values = ['DecisionTeam_HistMapWinPercent','OtherTeam_HistMapWinPercent'])
+
     map_picks.drop(labels = ['LoserId', 'WinnerId', 
                             'MatchDate', 'MatchTime',
-                            'WinnerMap_HistWinPct', 'LoserMap_HistWinPct'], axis = 1, inplace = True)
+                            'WinnerMap_HistWinPct', 'LoserMap_HistWinPct',
+                            'DecisionTeam_HistMapWinPercent','OtherTeam_HistMapWinPercent' ], axis = 1, inplace = True)
 
+    pivot_table2.columns = [f'DecTeam_{i}_WinPct' for i in map_names] + [f'OtherTeam_{i}_WinPct' for i in map_names]
+    pivot_table2.reset_index(inplace = True)
+
+    map_picks = map_picks.merge(pivot_table2, how = 'left', left_on = 'MatchId', right_on = 'MatchId')
     map_picks.sort_values(by = ['MatchId', 'DecisionOrder'], inplace = True)
 
     return map_picks
@@ -273,9 +284,10 @@ def create_basic_pick_veto_triples(data_directory,
 
     cols = ['MatchId'] + \
           [i+'_is_available' for i in map_encoder.keys()] + \
-          ['DecisionTeamId', 'OtherTeamId', 'DecisionTeam_WinPercent', \
-          'OtherTeam_WinPercent','DecisionTeam_HistMapWinPercent','OtherTeam_HistMapWinPercent',\
-          'DecisionOrder', 'MapName','Y_reward']
+          ['DecisionTeamId', 'OtherTeamId', 'DecisionTeam_WinPercent', 'OtherTeam_WinPercent'] + \
+          [f'DecTeam_{i}_WinPct' for i in map_encoder.keys()] + \
+          [f'OtherTeam_{i}_WinPct' for i in map_encoder.keys()] + \
+          ['DecisionOrder', 'MapName','Y_reward']
 
     for i in range(len(rewards_list)):
         rewards_list[i].drop(labels = 'Decision', axis = 1, inplace = True)
