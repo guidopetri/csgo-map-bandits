@@ -36,7 +36,7 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
     target_propensities = np.empty((context_train.shape[0],len(log_policy.map_cols)))
     
     for ii in range(context_train.shape[0]):   
-        target_propensities_row = target_bandit.predict_proba(context_train[ii,:])
+        target_propensities_row = target_bandit.predict_proba(context_train[ii,:], veto_flags.iloc[ii])
         target_propensities[ii,:] = target_propensities_row
     
     # Check to make sure these are both n x k. I guess its possible that not all actions were chosen, but thats unlikely.
@@ -80,7 +80,7 @@ def evaluate(context_test,map_picks_test,actions_test,rewards_test,log_policy,ta
     #Create target policies propensity distribution
     target_propensities = np.empty((context_test.shape[0],num_actions))
     for ii in range(context_test.shape[0]):   
-        target_propensities_row = target_bandit.predict_proba(context_test[ii,:])
+        target_propensities_row = target_bandit.predict_proba(context_test[ii,:], veto_flags.iloc[ii])
         target_propensities[ii,:] = target_propensities_row
    
     #( Self-normalized) Importance weighted value estimator

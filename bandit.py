@@ -49,7 +49,7 @@ class Bandit(object):
 
         return phi.reshape(-1, 1)
 
-    def prefs(self, X):
+    def prefs(self, X, action_type='pick'):
         """
         Return the bandit's preferences for each action, for each context in X.
 
@@ -62,12 +62,17 @@ class Bandit(object):
         #                  for a in range(self.n_arms)],
         #                 axis=1).squeeze().T
 
-        prefs = np.array([self.theta.T @ self._phi(X, a)
+        if action_type == 'pick':
+            theta_slice = self.theta[:self.n_features * self.n_arms]
+        elif action_type == 'veto':
+            theta_slice = self.theta[self.n_features * self.n_arms:]
+
+        prefs = np.array([theta_slice.T @ self._phi(X, a)
                           for a in range(self.n_arms)]).T
 
         return prefs
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, action_type='pick'):
         """
         Return probabilities for each action for each context in X.
 
@@ -76,7 +81,7 @@ class Bandit(object):
         output: probs, probabilities per action. Shape: (n_contexts, n_arms)
         """
 
-        prefs = self.prefs(X.reshape(-1, self.n_features))
+        prefs = self.prefs(X.reshape(-1, self.n_features), action_type)
 
         # use softmax to get probabilities from prefs
         probabilities = softmax(prefs.reshape(-1, self.n_arms),
@@ -88,7 +93,7 @@ class Bandit(object):
         possible_maps /= possible_maps.sum()
         return possible_maps
 
-    def predict(self, X, deterministic=True):
+    def predict(self, X, deterministic=True, action_type='pick'):
         """
         Return prediction of an action for each context in X.
 
@@ -97,7 +102,7 @@ class Bandit(object):
         output: action, action chosen per context. Shape: (n_contexts,)
         """
 
-        predictions = self.predict_proba(X)
+        predictions = self.predict_proba(X, action_type)
 
         # if we're deterministic, just pick the highest-probability action
         if deterministic:
@@ -111,7 +116,7 @@ class Bandit(object):
         binarized = (cumsum.T < random_val).astype(int).sum(axis=0)
         return binarized
 
-    def _gradient(self, X, action):
+    def _gradient(self, X, action, action_type='pick'):
         """
         Return the gradient of log of pi with respect to contexts X
         and actions A.
@@ -123,9 +128,14 @@ class Bandit(object):
         """
         # should return \nabla log(pi(A_t|X_t))
 
+        if action_type == 'pick':
+            theta_slice = self.theta[:self.n_features * self.n_arms]
+        elif action_type == 'veto':
+            theta_slice = self.theta[self.n_features * self.n_arms:]
+
         # precalc
         phis = [self._phi(X, i) for i in range(self.n_arms)]
-        exps = [np.exp(self.theta.T @ phis[i])
+        exps = [np.exp(theta_slice.T @ phis[i])
                 for i in range(self.n_arms)]
         phi = phis[action]
 
@@ -200,6 +210,7 @@ class ComboBandit(Bandit):
         self.iters += len(X)
         r_t = reward.T - self.current_baseline
         gradient = np.zeros(self.theta.shape)
+        half_size = self.n_features * self.n_arms
 
         # allow both episodic and online learning
         if X.ndim == 1:
@@ -207,14 +218,15 @@ class ComboBandit(Bandit):
 
         for idx, x in enumerate(X):
             if action_type == 'pick':
-                curr_action = action[idx]
+                nabla = self._gradient(x, action[idx]).squeeze()
+                gradient[:half_size] += r_t[idx] * nabla
             elif action_type == 'veto':
                 # add 7 to offset the vetos
-                curr_action = action[idx] + self.n_arms
+                nabla = self._gradient(x, action[idx] + self.n_arms).squeeze()
+                gradient[half_size:] += r_t[idx] * nabla
             else:
                 raise ValueError('Action type must be one of "pick", "veto"')
 
-            gradient += r_t[idx] * self._gradient(x, curr_action).squeeze()
         self.theta += self.step_size * gradient.squeeze()
 
 
@@ -233,6 +245,7 @@ class EpisodicBandit(ComboBandit):
         self.iters += len(X)
         r_t = reward.T - self.current_baseline
         gradient = np.zeros(self.theta.shape)
+        half_size = self.n_features * self.n_arms
 
         # enforce episodic learning
         if X.ndim == 1:
@@ -241,12 +254,13 @@ class EpisodicBandit(ComboBandit):
 
         for idx, x in enumerate(X):
             if action_types[idx] == 'pick':
-                curr_action = action[idx]
+                nabla = self._gradient(x, action[idx]).squeeze()
+                gradient[:half_size] += r_t[idx] * nabla
             elif action_types[idx] == 'veto':
                 # add 7 to offset the vetos
-                curr_action = action[idx] + self.n_arms
+                nabla = self._gradient(x, action[idx] + self.n_arms).squeeze()
+                gradient[half_size:] += r_t[idx] * nabla
             else:
                 raise ValueError('Action type must be one of "pick", "veto"')
 
-            gradient += r_t[idx] * self._gradient(x, curr_action).squeeze()
         self.theta += self.step_size * gradient.squeeze()
