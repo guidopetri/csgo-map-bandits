@@ -19,7 +19,7 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
         log_policy: a LoggingPolicy object, which needs to have a function predict_proba(self,context)
         target_policy: a Bandit object, which needs to have a function predict_proba(self,context)
     '''
-    
+
     # Veto flags
     if veto_flags is not None:
         veto_flags = veto_flags.reset_index(drop=True)
@@ -45,7 +45,7 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
         for flag in temp_dict.keys():
             out_dict[action][flag] = temp_dict[flag][action]
     return out_dict
-    
+
 def train_single_value_estimator(context_train,map_picks_train,actions_train,rewards_train,log_policy,target_bandit,veto_flag='pick'):
     '''Split this loop off so we could use it twice: for picks and vetoes'''
     all_actions = np.unique(actions_train) # return from unique is already sorted
