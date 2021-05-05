@@ -47,12 +47,15 @@ class LoggingPolicy(object):
 
         return pa_x_dict
     
-    def predict_proba(self,X,is_veto=False):
+    def predict_proba(self,X,action_type='pick'):
         # Wrapper for _predict_proba_internal() that passes it either the picks or veto dict
-        if is_veto:
+        if action_type == 'veto':
             return self._predict_proba_internal(X,self.pa_x_veto_dict)
-        else:
+        elif action_type == 'pick':
             return self._predict_proba_internal(X,self.pa_x_dict)
+        else:
+            raise ValueError(f"action_type should be pick or veto, was passed: {action_type}")
+
 
 
     def _predict_proba_internal(self, X, pa_x_dict):

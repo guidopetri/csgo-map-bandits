@@ -25,9 +25,9 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
 
     # Veto flags
     if veto_flags is not None:
-        veto_flags = (veto_flags == 'veto')
+        pass
     else:
-        veto_flags = pd.Series([False]*context_train.shape[0])
+        veto_flags = pd.Series(['pick']*context_train.shape[0])
     
     for ii,(idx,row) in enumerate(map_picks_train.iterrows()):   
         log_propensities_row = log_policy.predict_proba(row,veto_flags.iloc[ii])
@@ -67,9 +67,9 @@ def evaluate(context_test,map_picks_test,actions_test,rewards_test,log_policy,ta
 
     # Veto flags
     if veto_flags is not None:
-        veto_flags = (veto_flags == 'veto')
+        pass
     else:
-        veto_flags = pd.Series([False]*context_test.shape[0])
+        veto_flags = pd.Series(['pick']*context_test.shape[0])
     
     #Create Logging policies propensity distribution
     log_propensities = np.empty((context_test.shape[0],len(log_policy.map_cols)))
