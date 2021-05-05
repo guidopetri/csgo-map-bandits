@@ -62,9 +62,9 @@ class Bandit(object):
         #                  for a in range(self.n_arms)],
         #                 axis=1).squeeze().T
 
-        if action_type == 'pick':
+        if (action_type == 'pick') | (len(self.theta) == self.n_features*self.n_arms):
             theta_slice = self.theta[:self.n_features * self.n_arms]
-        elif action_type == 'veto':
+        elif (action_type == 'veto') & (len(self.theta) != self.n_features*self.n_arms):
             theta_slice = self.theta[self.n_features * self.n_arms:]
         else:
             raise ValueError(f"wrong action_type passed: {action_type}")
