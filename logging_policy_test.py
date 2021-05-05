@@ -61,7 +61,7 @@ context = full_context_veto.loc[10]
 
 full_pa_x = lp.pa_x_veto_dict[context['DecisionTeamId']]
 # Calculate probability distributions
-from_lp = lp.predict_proba(context,True)[2]
+from_lp = lp.predict_proba(context,'veto')[2]
 manual = full_pa_x[2]/(1-full_pa_x[0]-full_pa_x[1]-full_pa_x[4]-full_pa_x[6])
 
 print("predict_proba: ",from_lp)
@@ -80,7 +80,7 @@ context_fake = full_context_veto.loc[10]
 context_fake['DecisionTeamId'] = 123456
 full_pa_x = lp.pa_x_veto_dict['default']
 manual = full_pa_x[2]/(1-full_pa_x[0]-full_pa_x[1]-full_pa_x[4]-full_pa_x[6])
-from_lp = lp.predict_proba(context_fake,True)[2]
+from_lp = lp.predict_proba(context_fake,'veto')[2]
 print("predict_proba: ",from_lp)
 print("manual calculation: ",manual)
 
