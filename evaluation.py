@@ -19,24 +19,47 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
         log_policy: a LoggingPolicy object, which needs to have a function predict_proba(self,context)
         target_policy: a Bandit object, which needs to have a function predict_proba(self,context)
     '''
+    
+    # Veto flags
+    if veto_flags is not None:
+        veto_flags = veto_flags.reset_index(drop=True)
+    else:
+        veto_flags = pd.Series(['pick']*context_train.shape[0])
+    
+    temp_dict = {}
+    for flag in ['pick','veto']:
+        if (veto_flags == flag).sum() > 0: 
+            idx = veto_flags == flag
+            temp_dict[flag] = train_single_value_estimator(context_train[idx], \
+                                                            map_picks_train.reset_index()[idx], \
+                                                            actions_train[idx], \
+                                                            rewards_train[idx], \
+                                                            log_policy, \
+                                                            target_bandit, \
+                                                            flag)
+            actions = temp_dict[flag].keys()
+    # Flip key order
+    out_dict = {a:{} for a in actions}
+
+    for action in actions:
+        for flag in temp_dict.keys():
+            out_dict[action][flag] = temp_dict[flag][action]
+    return out_dict
+    
+def train_single_value_estimator(context_train,map_picks_train,actions_train,rewards_train,log_policy,target_bandit,veto_flag='pick'):
+    '''Split this loop off so we could use it twice: for picks and vetoes'''
     all_actions = np.unique(actions_train) # return from unique is already sorted
     action_to_model_dict = {}
     log_propensities = np.empty((context_train.shape[0],len(log_policy.map_cols)))
 
-    # Veto flags
-    if veto_flags is not None:
-        pass
-    else:
-        veto_flags = pd.Series(['pick']*context_train.shape[0])
-    
     for ii,(idx,row) in enumerate(map_picks_train.iterrows()):   
-        log_propensities_row = log_policy.predict_proba(row,veto_flags.iloc[ii])
+        log_propensities_row = log_policy.predict_proba(row,veto_flag)
         log_propensities[ii,:] = log_propensities_row
     
     target_propensities = np.empty((context_train.shape[0],len(log_policy.map_cols)))
     
     for ii in range(context_train.shape[0]):   
-        target_propensities_row = target_bandit.predict_proba(context_train[ii,:], veto_flags.iloc[ii])
+        target_propensities_row = target_bandit.predict_proba(context_train[ii,:], veto_flag)
         target_propensities[ii,:] = target_propensities_row
     
     # Check to make sure these are both n x k. I guess its possible that not all actions were chosen, but thats unlikely.
@@ -60,14 +83,15 @@ def train_value_estimator(context_train,map_picks_train,actions_train,rewards_tr
 def evaluate(context_test,map_picks_test,actions_test,rewards_test,log_policy,target_bandit,action_to_model_dict,veto_flags=None):
     est = {}
     est["mean"] = np.mean(rewards_test)
-    
+
     all_actions = action_to_model_dict.keys()
+
     num_actions = target_bandit.n_arms
     assert target_bandit.n_arms == len(log_policy.pa_x_dict[6])
 
-    # Veto flags
+ # Veto flags
     if veto_flags is not None:
-        pass
+        veto_flags = veto_flags.reset_index(drop=True)
     else:
         veto_flags = pd.Series(['pick']*context_test.shape[0])
     
@@ -99,7 +123,7 @@ def evaluate(context_test,map_picks_test,actions_test,rewards_test,log_policy,ta
     #Create predicted reward distribution
     for action in all_actions:
         model = action_to_model_dict[action]
-        predicted_rewards[:,action] = model.predict(context_test)
+        predicted_rewards[:,action] = [model[f].predict(c.reshape(1,-1)) for f,c in zip(veto_flags,context_test)]
     # estimate
     est['Direct_Method_IW'] = (predicted_rewards*target_propensities).sum(axis=1).mean()
     return est
