@@ -66,6 +66,8 @@ class Bandit(object):
             theta_slice = self.theta[:self.n_features * self.n_arms]
         elif action_type == 'veto':
             theta_slice = self.theta[self.n_features * self.n_arms:]
+        else:
+            raise ValueError(f"wrong action_type passed: {action_type}")
 
         prefs = np.array([theta_slice.T @ self._phi(X, a)
                           for a in range(self.n_arms)]).T
@@ -132,6 +134,8 @@ class Bandit(object):
             theta_slice = self.theta[:self.n_features * self.n_arms]
         elif action_type == 'veto':
             theta_slice = self.theta[self.n_features * self.n_arms:]
+        else:
+            raise ValueError(f"wrong action_type passed: {action_type}")
 
         # precalc
         phis = [self._phi(X, i) for i in range(self.n_arms)]
