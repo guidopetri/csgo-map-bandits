@@ -221,12 +221,12 @@ class ComboBandit(Bandit):
             X = X.reshape(-1, 1)
 
         for idx, x in enumerate(X):
+            nabla = self._gradient(x, action[idx], action_type).squeeze()
             if action_type == 'pick':
-                nabla = self._gradient(x, action[idx]).squeeze()
                 gradient[:half_size] += r_t[idx] * nabla
             elif action_type == 'veto':
                 # add 7 to offset the vetos
-                nabla = self._gradient(x, action[idx] + self.n_arms).squeeze()
+                # nabla = self._gradient(x, action[idx] + self.n_arms).squeeze()
                 gradient[half_size:] += r_t[idx] * nabla
             else:
                 raise ValueError('Action type must be one of "pick", "veto"')
@@ -257,12 +257,12 @@ class EpisodicBandit(ComboBandit):
                              "X must be 2-dimensional")
 
         for idx, x in enumerate(X):
+            nabla = self._gradient(x, action[idx], action_types[idx]).squeeze()
             if action_types[idx] == 'pick':
-                nabla = self._gradient(x, action[idx]).squeeze()
                 gradient[:half_size] += r_t[idx] * nabla
             elif action_types[idx] == 'veto':
                 # add 7 to offset the vetos
-                nabla = self._gradient(x, action[idx] + self.n_arms).squeeze()
+                # nabla = self._gradient(x, action[idx] + self.n_arms).squeeze()
                 gradient[half_size:] += r_t[idx] * nabla
             else:
                 raise ValueError('Action type must be one of "pick", "veto"')
