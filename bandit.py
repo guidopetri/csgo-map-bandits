@@ -165,6 +165,42 @@ class Bandit(object):
         gradient = r_t * self._gradient(X, action)
         self.theta += self.step_size * gradient.squeeze()
 
+class BothBandit(Bandit):
+    def __init__(self, n_features, n_arms, step_size=0.05, baseline=False, trained_type='pick'):
+        self.n_features = n_features
+        self.n_arms = n_arms
+        self.step_size = step_size
+        self.baseline = baseline
+        self.reward_sum = 0
+        self.iters = 0
+        self.trained_type = trained_type
+
+        # start at uniform
+        # theta shape: (n_features * n_arms,)
+        self.theta = np.zeros((self.n_features * self.n_arms,))
+
+    def prefs(self, X, action_type='pick'):
+        """
+        Return the bandit's preferences for each action, for each context in X.
+
+        input: X, contexts. Shape: (n_contexts, n_features)
+                action_type. 'pick' or 'veto'
+
+        output: prefs, preferences. Shape: (n_contexts, n_arms)
+        """
+
+        # phis = np.stack([self._phi(X, a)
+        #                  for a in range(self.n_arms)],
+        #                 axis=1).squeeze().T
+        theta_slice = self.theta[:self.n_features * self.n_arms]
+        prefs = np.array([theta_slice.T @ self._phi(X, a)
+                          for a in range(self.n_arms)]).T
+        if action_type == self.trained_type:
+            prefs_out = prefs 
+        else:
+            prefs_out  = (1-prefs)/((1-prefs).sum())
+        
+        return prefs_out
 
 class VetoBandit(Bandit):
     def update_theta(self, X, action, reward):

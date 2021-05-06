@@ -83,13 +83,13 @@ def train_single_value_estimator(context_train,map_picks_train,actions_train,rew
 def evaluate(context_test,map_picks_test,actions_test,rewards_test,log_policy,target_bandit,action_to_model_dict,veto_flags=None):
     est = {}
     est["mean"] = np.mean(rewards_test)
-
+    
     all_actions = action_to_model_dict.keys()
-
+    
     num_actions = target_bandit.n_arms
     assert target_bandit.n_arms == len(log_policy.pa_x_dict[6])
 
- # Veto flags
+    # Veto flags
     if veto_flags is not None:
         veto_flags = veto_flags.reset_index(drop=True)
     else:
